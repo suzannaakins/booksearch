@@ -8,9 +8,6 @@ const resolvers = {
         user: async (parent, { _id }) => {
             return User.findOne({ _id })
                 .select('-__v -password')
-                .populate('username')
-                .populate('bookCount')
-                .populate('savedBooks');
         },
 
         //query the CURRENT user logged in using token
@@ -18,9 +15,6 @@ const resolvers = {
             if (context.user) {
                 const userData = await User.findOne({ _id: context.user._id })
                     .select('-__v -password')
-                    .populate('username')
-                    .populate('bookCount')
-                    .populate('savedBooks');
                 return userData;
             }
 
@@ -52,13 +46,13 @@ const resolvers = {
             return { token, user };
         },
 
-        saveBook: async (parent, { bookId }, context) => {
+        saveBook: async (parent, { authors, bookId, title, description, image, link }, context) => {
             if (context.user) {
 
                 const updatedUser =
                     await User.findByIdAndUpdate(
                         { _id: context.user._id },
-                        { $addToSet: { savedBooks: { bookId } } },
+                        { $addToSet: { savedBooks: { authors, bookId, title, description, image, link } } },
                         { new: true }
                     ).populate('savedBooks');
 
@@ -69,11 +63,11 @@ const resolvers = {
         },
 
         // remove a book from `savedBooks`
-        deleteBook: async (parent, { user, params }, context) => {
+        deleteBook: async (parent, { bookId }, context) => {
             if (context.user) {
                 const updatedUser = await User.findOneAndUpdate(
-                    { _id: user._id },
-                    { $pull: { savedBooks: { bookId: params.bookId } } },
+                    { _id: context.user._id },
+                    { $pull: { savedBooks: { bookId } } },
                     { new: true }
                 );
 
