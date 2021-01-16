@@ -4,39 +4,32 @@ const { signToken } = require('../utils/auth')
 
 const resolvers = {
     Query: {
+        //get a SINGLE user by id 
+        user: async (parent, { _id }) => {
+            return User.findOne({ _id })
+                .select('-__v -password')
+                .populate('username')
+                .populate('bookCount')
+                .populate('savedBooks');
+        },
+
         //query the CURRENT user logged in using token
         me: async (parent, args, context) => {
             if (context.user) {
                 const userData = await User.findOne({ _id: context.user._id })
                     .select('-__v -password')
-                    .populate('books')
+                    .populate('username')
+                    .populate('bookCount')
+                    .populate('savedBooks');
                 return userData;
             }
 
             throw new AuthenticationError('Not logged in');
         },
-
-        //get ALL users
-        users: async () => {
-            return User.find()
-                .select('-__v -password')
-                .populate('friends')
-                .populate('thoughts');
-        },
-
-        //get all books
-        books: async () => {
-            return Book.find();
-        },
-
-        //get ONE book by id
-        book: async (parent, { _id }) => {
-            return Book.findOne({ _id });
-        },
     },
 
     Mutation: {
-        addUser: async (parent, args) => {
+        createUser: async (parent, args) => {
             const user = await User.create(args);
             const token = signToken(user);
 
@@ -65,15 +58,29 @@ const resolvers = {
                 const updatedUser =
                     await User.findByIdAndUpdate(
                         { _id: context.user._id },
-                        { $push: { books: { bookId, username: context.user.username } } },
+                        { $addToSet: { savedBooks: { bookId } } },
                         { new: true }
-                    );
+                    ).populate('savedBooks');
 
                 return updatedUser;
             }
 
             throw new AuthenticationError('You need to be logged in!');
         },
+
+        // remove a book from `savedBooks`
+        deleteBook: async (parent, { user, params }, context) => {
+            if (context.user) {
+                const updatedUser = await User.findOneAndUpdate(
+                    { _id: user._id },
+                    { $pull: { savedBooks: { bookId: params.bookId } } },
+                    { new: true }
+                );
+
+                return updatedUser;
+            }
+            throw new AuthenticationError('You need to be logged in!');
+        }
     }
 };
 
