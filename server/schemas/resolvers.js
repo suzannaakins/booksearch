@@ -4,12 +4,6 @@ const { signToken } = require('../utils/auth')
 
 const resolvers = {
     Query: {
-        //get a SINGLE user by id 
-        user: async (parent, { _id }) => {
-            return User.findOne({ _id })
-                .select('-__v -password')
-        },
-
         //query the CURRENT user logged in using token
         me: async (parent, args, context) => {
             if (context.user) {
@@ -23,13 +17,15 @@ const resolvers = {
     },
 
     Mutation: {
-        createUser: async (parent, args) => {
+        addUser: async (parent, args) => {
             const user = await User.create(args);
             const token = signToken(user);
 
             return { token, user };
         },
+
         login: async (parent, { email, password }) => {
+            console.log(email);
             const user = await User.findOne({ email });
 
             if (!user) {
@@ -46,15 +42,15 @@ const resolvers = {
             return { token, user };
         },
 
-        saveBook: async (parent, { authors, bookId, title, description, image, link }, context) => {
+        saveBook: async (parent, { Book }, context) => {
             if (context.user) {
 
                 const updatedUser =
                     await User.findByIdAndUpdate(
                         { _id: context.user._id },
-                        { $addToSet: { savedBooks: { authors, bookId, title, description, image, link } } },
+                        { $push: { savedBooks: Book } },
                         { new: true }
-                    ).populate('savedBooks');
+                    );
 
                 return updatedUser;
             }
